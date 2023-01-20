@@ -1,0 +1,14 @@
+[package]
+name = "protobuf-dbml"
+description = "DBML transpiler for Protocol Buffers."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/apskhem/protobuf-dbml"
+readme = "README.md"
+authors = ["Apisit Ritreungroj <cyber1.record@gmail.com>"]
+keywords = ["transpiler"]
+version = "0.1.0-beta.1"
+edition = "2021"
+
+[dependencies]
+dbml-rs = "0.1.0-beta.1"
+Inflector = "0.11"
