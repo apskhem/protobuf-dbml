@@ -83,7 +83,7 @@ fn transpile(ast: analyzer::SemanticSchemaBlock, target: &Target, package_name: 
     .line(r#"syntax = "proto3";"#)
     .line_skip(1)
     .line(r#"import "google/protobuf/timestamp.proto";"#)
-    .line_cond(!package_name.is_empty(), format!("\n{}", package_name));
+    .line_cond(!package_name.is_empty(), format!("\npackage {};", package_name));
 
   let codegen = ast.tables.iter().fold(codegen, |acc, table| {
     let ast::table::TableBlock {
