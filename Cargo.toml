@@ -6,7 +6,7 @@ repository = "https://github.com/apskhem/protobuf-dbml"
 readme = "README.md"
 authors = ["Apisit Ritreungroj <cyber1.record@gmail.com>"]
 keywords = ["transpiler"]
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 edition = "2021"
 exclude = [
   ".github/*",
