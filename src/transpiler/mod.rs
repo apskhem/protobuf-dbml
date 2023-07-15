@@ -1,20 +1,20 @@
 use std::io::Result;
 
+use crate::generator::{Block, Codegen};
 use crate::{NAME, VERSION};
-use crate::generator::{Codegen, Block};
 
 use dbml_rs::*;
 
 mod traits;
 use dbml_rs::ast::table::TableBlock;
 use traits::*;
-mod err;
 pub mod config;
+mod err;
 
 enum EntityProfile {
   Normal,
   Create,
-  Update
+  Update,
 }
 
 pub fn transpile(ast: analyzer::SemanticSchemaBlock, config: &config::Config) -> Result<String> {
@@ -24,7 +24,10 @@ pub fn transpile(ast: analyzer::SemanticSchemaBlock, config: &config::Config) ->
     .line(r#"syntax = "proto3";"#)
     .line_skip(1)
     .line(r#"import "google/protobuf/timestamp.proto";"#)
-    .line_cond(!config.package_name.is_empty(), format!("\npackage {};", config.package_name));
+    .line_cond(
+      !config.package_name.is_empty(),
+      format!("\npackage {};", config.package_name),
+    );
 
   let codegen = gen_entity_modules(&ast, codegen, config);
   let codegen = gen_enum_modules(&ast, codegen, config);
@@ -32,26 +35,45 @@ pub fn transpile(ast: analyzer::SemanticSchemaBlock, config: &config::Config) ->
   Ok(codegen.to_string())
 }
 
-fn gen_entity_modules(ast: &analyzer::SemanticSchemaBlock, codegen: Codegen, config: &config::Config) -> Codegen {
+fn gen_entity_modules(
+  ast: &analyzer::SemanticSchemaBlock,
+  codegen: Codegen,
+  config: &config::Config,
+) -> Codegen {
   ast.tables.iter().fold(codegen, |acc, table| {
     let mut blocks = Vec::with_capacity(3);
 
     if true {
-      blocks.push(gen_entity_module_with_profile(table.clone(), config, EntityProfile::Normal));
+      blocks.push(gen_entity_module_with_profile(
+        table.clone(),
+        config,
+        EntityProfile::Normal,
+      ));
     }
     if config.is_with_create_schema {
-      blocks.push(gen_entity_module_with_profile(table.clone(), config, EntityProfile::Create));
+      blocks.push(gen_entity_module_with_profile(
+        table.clone(),
+        config,
+        EntityProfile::Create,
+      ));
     }
     if config.is_with_update_schema {
-      blocks.push(gen_entity_module_with_profile(table.clone(), config, EntityProfile::Update));
+      blocks.push(gen_entity_module_with_profile(
+        table.clone(),
+        config,
+        EntityProfile::Update,
+      ));
     }
 
-    acc
-      .block_vec(blocks)
+    acc.block_vec(blocks)
   })
 }
 
-fn gen_entity_module_with_profile(table: TableBlock, config: &config::Config, profile: EntityProfile) -> Block {
+fn gen_entity_module_with_profile(
+  table: TableBlock,
+  config: &config::Config,
+  profile: EntityProfile,
+) -> Block {
   let ast::table::TableBlock {
     ident,
     cols: fields,
@@ -62,112 +84,110 @@ fn gen_entity_module_with_profile(table: TableBlock, config: &config::Config, pr
   let transformed_table_name = (config.table_name_transform_fn)(
     ident.schema.as_ref().map(|v| v.as_str()),
     &ident.name,
-    ident.alias.as_ref().map(|v| v.as_str())
+    ident.alias.as_ref().map(|v| v.as_str()),
   );
 
   let transformed_table_name = match profile {
     EntityProfile::Normal => format!("message {}", transformed_table_name),
     EntityProfile::Create => format!("message Create{}", transformed_table_name),
-    EntityProfile::Update => format!("message Update{}", transformed_table_name)
+    EntityProfile::Update => format!("message Update{}", transformed_table_name),
   };
 
   let table_block = Block::new(1, Some(transformed_table_name));
 
   // field listing
-  fields.into_iter().enumerate().fold(table_block,|acc, (i, field)| {
-    let mut out_fields = match profile {
-      EntityProfile::Normal => {
-        let mut out_fields = vec![];
-    
-        if field.settings.is_nullable {
-          out_fields.push(format!("optional"))
-        }
+  fields
+    .into_iter()
+    .enumerate()
+    .fold(table_block, |acc, (i, field)| {
+      let mut out_fields = match profile {
+        EntityProfile::Normal => {
+          let mut out_fields = vec![];
 
-        out_fields
-      },
-      EntityProfile::Create => {
-        let mut out_fields = vec![];
-
-        if field.settings.is_pk {
-          match config.is_create_schema_primary_key_included {
-            None if field.settings.is_incremental => {
-              return acc;
-            },
-            Some(false) => {
-              return acc;
-            },
-            _ => ()
+          if field.settings.is_nullable {
+            out_fields.push(format!("optional"))
           }
+
+          out_fields
         }
+        EntityProfile::Create => {
+          let mut out_fields = vec![];
 
-        if field.settings.is_nullable || field.settings.default.is_some() {
-          out_fields.push(format!("optional"))
+          if field.settings.is_pk {
+            match config.is_create_schema_primary_key_included {
+              None if field.settings.is_incremental => {
+                return acc;
+              }
+              Some(false) => {
+                return acc;
+              }
+              _ => (),
+            }
+          }
+
+          if field.settings.is_nullable || field.settings.default.is_some() {
+            out_fields.push(format!("optional"))
+          }
+
+          out_fields
         }
+        EntityProfile::Update => {
+          let mut out_fields = vec![];
 
-        out_fields
-      },
-      EntityProfile::Update => {
-        let mut out_fields = vec![];
+          if field.settings.is_pk && !config.is_update_schema_primary_key_included {
+            return acc;
+          }
 
-        if field.settings.is_pk && !config.is_update_schema_primary_key_included {
-          return acc
+          if !field.settings.is_pk {
+            out_fields.push(format!("optional"))
+          }
+
+          out_fields
         }
+      };
 
-        if !field.settings.is_pk {
-          out_fields.push(format!("optional"))
-        }
-
-        out_fields
+      if let ast::table::ColumnTypeName::Enum(s) = field.r#type.type_name {
+        let transformed_enum_name = (config.enum_name_transform_fn)(
+          // FIXME: fill this None. this can lead to potential bug
+          None, &s,
+        );
+        out_fields.push(transformed_enum_name)
+      } else if let Some(exp_type) = field.r#type.to_col_type() {
+        out_fields.push(exp_type)
+      } else {
+        panic!("unsupported type")
       }
-    };
-    
-    if let ast::table::ColumnTypeName::Enum(s) = field.r#type.type_name {
-      let transformed_enum_name = (config.enum_name_transform_fn)(
-        // FIXME: fill this None. this can lead to potential bug
-        None,
-        &s,
-      );
-      out_fields.push(transformed_enum_name)
-    }
-    else if let Some(exp_type) = field.r#type.to_col_type() {
-      out_fields.push(exp_type)
-    }
-    else {
-      panic!("unsupported type")
-    }
 
-    out_fields.push(field.name);
-    
-    acc
-      .line(format!("{} = {};", out_fields.join(" "), i + 1))
-  })
+      out_fields.push(field.name);
+
+      acc.line(format!("{} = {};", out_fields.join(" "), i + 1))
+    })
 }
 
-fn gen_enum_modules(ast: &analyzer::SemanticSchemaBlock, codegen: Codegen, config: &config::Config) -> Codegen {
+fn gen_enum_modules(
+  ast: &analyzer::SemanticSchemaBlock,
+  codegen: Codegen,
+  config: &config::Config,
+) -> Codegen {
   ast.enums.iter().fold(codegen, |acc, r#enum| {
     let ast::enums::EnumBlock {
-      ident: ast::enums::EnumIdent {
-        name,
-        schema,
-      },
+      ident: ast::enums::EnumIdent { name, schema },
       values,
     } = r#enum;
 
-    let transformed_enum_name = (config.enum_name_transform_fn)(
-      schema.as_ref().map(|v| v.as_str()),
-      &name,
-    );
+    let transformed_enum_name =
+      (config.enum_name_transform_fn)(schema.as_ref().map(|v| v.as_str()), &name);
     let enum_block = Block::new(1, Some(format!("enum {}", transformed_enum_name)));
 
-    let enum_block = values.into_iter().enumerate().fold(enum_block,|acc, (i, value)| {
-      let value_name = value.value.clone();
+    let enum_block = values
+      .into_iter()
+      .enumerate()
+      .fold(enum_block, |acc, (i, value)| {
+        let value_name = value.value.clone();
 
-      acc
-        .line(format!("{} = {};", value_name, i))
-    });
+        acc.line(format!("{} = {};", value_name, i))
+      });
 
-    acc
-      .line_skip(1)
-      .block(enum_block)
+    acc.line_skip(1).block(enum_block)
   })
 }

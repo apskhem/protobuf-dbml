@@ -1,3 +1,1 @@
-pub enum TranspilerErr {
-    
-}
+pub enum TranspilerErr {}

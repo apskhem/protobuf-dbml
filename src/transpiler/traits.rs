@@ -25,17 +25,15 @@ impl ToColType for table::ColumnType {
       table::ColumnTypeName::Uuid => Some(format!("string")),
       table::ColumnTypeName::Json => Some(format!("string")), // string, bytes, google.protobuf.Struct, google.protobuf.Value google.protobuf.ListValue
       table::ColumnTypeName::Decimal => Some(format!("double")),
-      _ => None
+      _ => None,
     };
 
-    str_type
-      .and_then(|v| {
-        if self.arrays.is_empty() {
-          Some(v)
-        }
-        else {
-          Some(format!("repeated {}", v))
-        }
-      })
+    str_type.and_then(|v| {
+      if self.arrays.is_empty() {
+        Some(v)
+      } else {
+        Some(format!("repeated {}", v))
+      }
+    })
   }
 }

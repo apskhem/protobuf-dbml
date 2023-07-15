@@ -1,4 +1,4 @@
-use std::{ffi::OsString, error::Error};
+use std::{error::Error, ffi::OsString};
 
 use inflector::Inflector;
 
@@ -7,12 +7,12 @@ use super::transpile;
 /// Protobuf target version.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Target {
-  Proto3
+  Proto3,
 }
 
 /// Configuration options for the code generation.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Config  {
+pub struct Config {
   /// Input file path.
   pub in_path: OsString,
   /// Output file path.
@@ -35,7 +35,7 @@ pub struct Config  {
   /// Forcing `is_with_create_schema` wether it should include primary key field or not.
   pub is_create_schema_primary_key_included: Option<bool>,
   /// Config `is_with_update_schema` to include primary key field.
-  pub is_update_schema_primary_key_included: bool
+  pub is_update_schema_primary_key_included: bool,
 }
 
 impl Default for Config {
@@ -45,12 +45,16 @@ impl Default for Config {
       out_path: OsString::from(""),
       target: Target::Proto3,
       package_name: String::new(),
-      table_name_transform_fn: |_: Option<&str>, name: &str, _: Option<&str>| format!("{}Schema", name.to_pascal_case()),
-      enum_name_transform_fn: |_: Option<&str>, name: &str| format!("{}Enum", name.to_pascal_case()),
+      table_name_transform_fn: |_: Option<&str>, name: &str, _: Option<&str>| {
+        format!("{}Schema", name.to_pascal_case())
+      },
+      enum_name_transform_fn: |_: Option<&str>, name: &str| {
+        format!("{}Enum", name.to_pascal_case())
+      },
       is_with_update_schema: false,
       is_with_create_schema: false,
       is_create_schema_primary_key_included: None,
-      is_update_schema_primary_key_included: false
+      is_update_schema_primary_key_included: false,
     }
   }
 }
@@ -68,7 +72,7 @@ impl Config {
 
   pub fn transpile(&self) -> Result<String, Box<dyn Error>> {
     let sem_ast = dbml_rs::parse_file(&self.in_path)?;
-    
+
     let result = transpile(sem_ast, &self)?;
 
     Ok(result)
