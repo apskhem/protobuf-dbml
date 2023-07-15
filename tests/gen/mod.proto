@@ -4,7 +4,7 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
-message Users {
+message UsersSchema {
 	int32 id = 1;
 	int32 age = 2;
 	string username = 3;
@@ -13,22 +13,68 @@ message Users {
 	optional int32 referral_id = 6;
 }
 
-message Posts {
+message CreateUsersSchema {
+	int32 id = 1;
+	optional int32 age = 2;
+	string username = 3;
+	string role = 4;
+	google.protobuf.Timestamp created_at = 5;
+	optional int32 referral_id = 6;
+}
+
+message UpdateUsersSchema {
+	int32 id = 1;
+	optional int32 age = 2;
+	optional string username = 3;
+	optional string role = 4;
+	optional google.protobuf.Timestamp created_at = 5;
+	optional int32 referral_id = 6;
+}
+
+message PostsSchema {
 	int32 id = 1;
 	string title = 2;
 	string body = 3;
 	int32 user_id = 4;
-	PostStatus status = 5;
+	PostStatusEnum status = 5;
 	google.protobuf.Timestamp created_at = 6;
 }
 
-message Orders {
+message CreatePostsSchema {
+	int32 id = 1;
+	string title = 2;
+	string body = 3;
+	int32 user_id = 4;
+	PostStatusEnum status = 5;
+	google.protobuf.Timestamp created_at = 6;
+}
+
+message UpdatePostsSchema {
+	int32 id = 1;
+	optional string title = 2;
+	optional string body = 3;
+	optional int32 user_id = 4;
+	optional PostStatusEnum status = 5;
+	optional google.protobuf.Timestamp created_at = 6;
+}
+
+message OrdersSchema {
 	int32 id = 1;
 	string status = 2;
 }
 
-enum PostStatus {
-	DRAFT = 0;
-	PUBLISHED = 1;
-	PRIVATE = 2;
+message CreateOrdersSchema {
+	int32 id = 1;
+	string status = 2;
+}
+
+message UpdateOrdersSchema {
+	int32 id = 1;
+	optional string status = 2;
+}
+
+enum PostStatusEnum {
+	draft = 0;
+	published = 1;
+	private = 2;
 }

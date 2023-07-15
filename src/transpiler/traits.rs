@@ -1,5 +1,4 @@
 use dbml_rs::ast::*;
-use inflector::Inflector;
 
 pub trait ToColType {
   fn to_col_type(&self) -> Option<String>;
@@ -8,7 +7,7 @@ pub trait ToColType {
 impl ToColType for table::ColumnType {
   fn to_col_type(&self) -> Option<String> {
     let str_type = match &self.type_name {
-      table::ColumnTypeName::Enum(s) => Some(s.to_pascal_case()),
+      table::ColumnTypeName::Enum(s) => Some(format!("{}", s)),
       table::ColumnTypeName::Char => Some(format!("string")),
       table::ColumnTypeName::VarChar => Some(format!("string")),
       table::ColumnTypeName::SmallInt => Some(format!("int32")),
